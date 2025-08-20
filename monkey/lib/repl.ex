@@ -13,4 +13,3 @@ defmodule Repl do
   end
 end
 
-Repl.start()

@@ -12,7 +12,7 @@ defmodule ParserTest do
       tokens = Lexer.init(input)
       {program, errors} = Parser.parse(tokens)
 
-      assert length(errors) == 0
+      assert_no_errors(errors)
 
       assert program == %Ast.Program{
                statements: [
@@ -66,24 +66,135 @@ defmodule ParserTest do
       tokens = Lexer.init(input)
       {program, errors} = Parser.parse(tokens)
 
-      assert length(errors) == 0
+      assert_no_errors(errors)
 
       assert program == %Ast.Program{
                statements: [
-                 %Ast.ReturnStatment{
+                 %Ast.ReturnStatement{
                    token: :return,
                    value: nil
                  },
-                 %Ast.ReturnStatment{
+                 %Ast.ReturnStatement{
                    token: :return,
                    value: nil
                  },
-                 %Ast.ReturnStatment{
+                 %Ast.ReturnStatement{
                    token: :return,
                    value: nil
                  }
                ]
              }
     end
+
+    test "should parse identifier expression" do
+      input = "foobar;"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   token: :identifier,
+                   expression: %Ast.Identifier{
+                     token: :identifier,
+                     value: "foobar"
+                   }
+                 }
+               ]
+             }
+    end
+
+    test "should parse integer literal expression" do
+      input = "5;"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   token: :int,
+                   expression: %Ast.IntegerLiteral{
+                     token: :int,
+                     value: 5
+                   }
+                 }
+               ]
+             }
+    end
+
+    test "should parse prefix expression" do
+      inputs = [
+        {"!5;", "!", 5, :bang},
+        {"-15;", "-", 15, :minus}
+      ]
+
+      for test <- inputs do
+        {input, operator, value, token} = test
+        tokens = Lexer.init(input)
+        {program, errors} = Parser.parse(tokens)
+
+        assert_no_errors(errors)
+
+        assert program == %Ast.Program{
+                 statements: [
+                   %Ast.ExpressionStatement{
+                     token: token,
+                     expression: %Ast.PrefixExpression{
+                       token: token,
+                       operator: operator,
+                       right: %Ast.IntegerLiteral{
+                         token: :int,
+                         value: value
+                       }
+                     }
+                   }
+                 ]
+               }
+      end
+    end
+
+    test "should parse infix expressions" do
+      inputs = [
+        {"5 + 5;", 5, "+", 5, :plus},
+        {"5 - 5;", 5, "-", 5, :minus},
+        {"5 / 5;", 5, "/", 5, :slash},
+        {"5 * 5;", 5, "*", 5, :asterisk},
+        {"5 > 5;", 5, ">", 5, :greater},
+        {"5 < 5;", 5, "<", 5, :less},
+        {"5 == 5;", 5, "==", 5, :eq},
+        {"5 != 5;", 5, "!=", 5, :not_eq}
+      ]
+
+      for test <- inputs do
+        {input, left, operator, right, token} = test
+        tokens = Lexer.init(input)
+        {program, errors} = Parser.parse(tokens)
+
+        assert_no_errors(errors)
+
+        assert program == %Ast.Program{
+                 statements: [
+                   %Ast.InfixExpression{
+                     token: token,
+                     left: %Ast.IntegerLiteral{
+                       token: :int,
+                       value: left
+                     },
+                     operator: operator,
+                     right: %Ast.IntegerLiteral{
+                       token: :int,
+                       value: right
+                     }
+                   }
+                 ]
+               }
+      end
+    end
   end
+
+  defp assert_no_errors(errors), do: assert(length(errors) == 0)
 end
