@@ -1,7 +1,7 @@
 defmodule Lexer do
   defguardp is_letter(c) when c in ?a..?z or ?A..?Z or c == ?_
-  defguardp(is_digit(c) when c in ?0..?9)
-  defguardp(is_whitespace(c) when c in ~c[ \n\t])
+  defguardp is_digit(c) when c in ?0..?9
+  defguardp is_whitespace(c) when c in ~c[ \n\t]
 
   def init(input) when is_binary(input) do
     lex(input, [])
@@ -21,16 +21,33 @@ defmodule Lexer do
   end
 
   defp tokenize(<<"+", rest::binary>>), do: {{:plus, "+"}, rest}
-  defp tokenize(<<"=", rest::binary>>), do: {{:assign, "="}, rest}
+
+  defp tokenize(<<"=", rest::binary>>) do
+    case rest do
+      <<"=", rest::binary>> -> {{:eq, "=="}, rest}
+      _ -> {{:assign, "="}, rest}
+    end
+  end
+
   defp tokenize(<<"(", rest::binary>>), do: {{:lparen, "("}, rest}
   defp tokenize(<<")", rest::binary>>), do: {{:rparen, ")"}, rest}
   defp tokenize(<<"{", rest::binary>>), do: {{:lbrace, "{"}, rest}
   defp tokenize(<<"}", rest::binary>>), do: {{:rbrace, "}"}, rest}
   defp tokenize(<<",", rest::binary>>), do: {{:comma, ","}, rest}
   defp tokenize(<<";", rest::binary>>), do: {{:semicolon, ";"}, rest}
-  defp tokenize(<<"!", rest::binary>>), do: {{:bang, "!"}, rest}
-  defp tokenize(<<"<", rest::binary>>), do: {{:less, "<"}, rest}
-  defp tokenize(<<">", rest::binary>>), do: {{:greater, ">"}, rest}
+
+  defp tokenize(<<"!", rest::binary>>) do
+    case rest do
+      <<"=", rest::binary>> ->
+        {{:not_eq, "!="}, rest}
+
+      _ ->
+        {{:bang, "!"}, rest}
+    end
+  end
+
+  defp tokenize(<<"<", rest::binary>>), do: {{:lt, "<"}, rest}
+  defp tokenize(<<">", rest::binary>>), do: {{:gt, ">"}, rest}
   defp tokenize(<<"-", rest::binary>>), do: {{:minus, "-"}, rest}
   defp tokenize(<<"/", rest::binary>>), do: {{:slash, "/"}, rest}
   defp tokenize(<<"*", rest::binary>>), do: {{:asterisk, "*"}, rest}

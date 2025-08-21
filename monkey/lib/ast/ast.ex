@@ -67,7 +67,7 @@ end
 
 defimpl String.Chars, for: Ast.PrefixExpression do
   def to_string(x) do
-    "#{x.operator}#{x.right}"
+    "(#{x.operator}#{x.right})"
   end
 end
 

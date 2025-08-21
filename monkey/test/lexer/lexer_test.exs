@@ -31,6 +31,8 @@ defmodule LexerTest do
       let result = add(five, ten);
       !-/*5;
       5 < 10 > 5;
+      10 == 10;
+      10 != 9;
       "
 
       expected = [
@@ -77,10 +79,18 @@ defmodule LexerTest do
         {:int, "5"},
         {:semicolon, ";"},
         {:int, "5"},
-        {:less, "<"},
+        {:lt, "<"},
         {:int, "10"},
-        {:greater, ">"},
+        {:gt, ">"},
         {:int, "5"},
+        {:semicolon, ";"},
+        {:int, "10"},
+        {:eq, "=="},
+        {:int, "10"},
+        {:semicolon, ";"},
+        {:int, "10"},
+        {:not_eq, "!="},
+        {:int, "9"},
         {:semicolon, ";"},
         {:eof, ""}
       ]

@@ -1,10 +1,29 @@
 defmodule Parser do
   alias Ast.Program
 
+  @lowest 0
+  @equals 1
+  @ltgt 2
+  @sum 3
+  @product 4
+  @prefix 5
+  @call 6
+  @index 7
   @precedence %{
-    :eq => 0,
-    :not_eq => 1
+    :eq => @equals,
+    :not_eq => @equals,
+    :lt => @ltgt,
+    :gt => @ltgt,
+    :plus => @sum,
+    :minus => @sum,
+    :slash => @product,
+    :asterisk => @product,
+    :lparen => @call,
+    :lbracket => @index
   }
+
+  @infix_tokens [:plus, :minus, :slash, :asterisk, :eq, :not_eq, :lt, :gt]
+
   def parse(tokens) do
     parse_program(tokens, %Program{statements: []}, [])
   end
@@ -36,7 +55,8 @@ defmodule Parser do
     {e, rest, errors} = parse_expression_statement(tokens, errors)
 
     program = %{program | statements: program.statements ++ [e]}
-    parse_program(rest, program, errors)
+    {program, errors}
+    # parse_program(rest, program, errors)
   end
 
   defp check_error(tokens, {expected, literal}, errors) do
@@ -53,11 +73,6 @@ defmodule Parser do
     identifier = %Ast.Identifier{token: :identifier, value: x}
     {errors, rest} = check_error(rest, {:assign, "="}, errors)
     parse_let_statement(rest, %{let | name: identifier}, errors)
-  end
-
-  defp parse_let_statement([{:assign, "="} | rest], let, errors) do
-    # errors = check_error(rest, :assign, errors)
-    parse_let_statement(rest, let, errors)
   end
 
   defp parse_let_statement([{:semicolon, ";"} | rest], let, errors) do
@@ -81,7 +96,7 @@ defmodule Parser do
   end
 
   defp parse_expression_statement(tokens, errors) do
-    {expression, rest, errors} = parse_expression(tokens, errors)
+    {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
 
     {%Ast.ExpressionStatement{
        token: expression.token,
@@ -93,33 +108,65 @@ defmodule Parser do
     {left, rest, errors}
   end
 
-  defp parse_expression([{:eof, ""}], errors, left) do
+  def parse_infix_expression([], [], left), do: {left, [], []}
+
+  def parse_infix_expression([{:semicolon, ";"} | rest], errors, left),
+    do: {left, rest, errors}
+
+  def parse_infix_expression([{:eof, ""} | rest], errors, left),
+    do: {left, rest, errors}
+
+  def parse_infix_expression([{token, operator} | rest], errors, left)
+      when token in @infix_tokens do
+    IO.puts("LEFT: #{inspect(left)}")
+    precedence = next_precedence([{token, operator}])
+    {right, rest, errors} = parse_expression(precedence, rest, errors, left)
+
+    left = %Ast.InfixExpression{
+      token: token,
+      left: left,
+      operator: operator,
+      right: right
+    }
+
+    parse_infix_expression(rest, errors, left)
+  end
+
+  def parse_infix_expression(tokens, errors, left), do: {left, tokens, errors}
+
+  defp parse_expression(precedence, [{:eof, ""}], errors, left) do
     {left, [{:eof, ""}], errors}
   end
 
-  defp parse_expression([], errors, left) do
+  defp parse_expression(precedence, [], errors, left) do
     {left, [], errors}
   end
 
-  defp parse_expression([{:identifier, x} | rest], errors) do
-    {errors, rest} = check_error(rest, {:semicolon, ";"}, errors)
+  defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
+    IO.puts("rest: #{inspect(rest)}")
+    IO.puts("precedence: #{precedence}")
+    left = %Ast.Identifier{token: :identifier, value: x}
+    IO.puts("next precedence: #{next_precedence(rest)}")
 
-    {%Ast.Identifier{token: :identifier, value: x}, rest, errors}
+    if precedence < next_precedence(rest) do
+      parse_infix_expression(rest, errors, left)
+    else
+      {left, rest, errors}
+    end
   end
 
-  defp parse_expression([{:int, x} | rest], errors) do
-    # {errors, rest} = check_error(rest, {:semicolon, ";"}, errors)
+  defp parse_expression(precedence, [{:int, x} | rest], errors, _left) do
+    left = %Ast.IntegerLiteral{token: :int, value: String.to_integer(x)}
 
-    left = %Ast.IntegerLiteral{
-      token: :int,
-      value: String.to_integer(x)
-    }
-
-    parse_expression(rest, errors, left)
+    if precedence < next_precedence(rest) do
+      parse_infix_expression(rest, errors, left)
+    else
+      {left, rest, errors}
+    end
   end
 
-  defp parse_expression([{:bang, "!"} | rest], errors) do
-    {right, rest, errors} = parse_expression(rest, errors)
+  defp parse_expression(precedence, [{:bang, "!"} | rest], errors, left) do
+    {right, rest, errors} = parse_expression(@prefix, rest, errors, left)
 
     left = %Ast.PrefixExpression{
       token: :bang,
@@ -127,11 +174,15 @@ defmodule Parser do
       right: right
     }
 
-    parse_expression(rest, errors, left)
+    if precedence < next_precedence(rest) do
+      parse_infix_expression(rest, errors, left)
+    else
+      {left, rest, errors}
+    end
   end
 
-  defp parse_expression([{:minus, "-"} | rest], errors) do
-    {right, rest, errors} = parse_expression(rest, errors)
+  defp parse_expression(precedence, [{:minus, "-"} | rest], errors, left) do
+    {right, rest, errors} = parse_expression(@prefix, rest, errors, left)
 
     left = %Ast.PrefixExpression{
       token: :minus,
@@ -139,16 +190,15 @@ defmodule Parser do
       right: right
     }
 
-    parse_expression(rest, errors, left)
+    if precedence < next_precedence(rest) do
+      parse_infix_expression(rest, errors, left)
+    else
+      {left, rest, errors}
+    end
   end
 
-  # defp parse_expression(tokens, errors) do
-  #   [first | rest] = tokens
-  #
-  #   {%Ast.PrefixExpression{
-  #      token: :minus,
-  #      operator: "-",
-  #      right: right
-  #    }, rest, errors}
-  # end
+  defp next_precedence(tokens) do
+    {next_token, _token} = hd(tokens)
+    Map.get(@precedence, next_token, @lowest)
+  end
 end

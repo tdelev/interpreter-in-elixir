@@ -47,7 +47,7 @@ defmodule ParserTest do
     test "should produce errors from parsing" do
       input = "let x 5;
         let = 10;
-        let 838383"
+        let 838383;"
       tokens = Lexer.init(input)
       {_, errors} = Parser.parse(tokens)
 
@@ -163,8 +163,8 @@ defmodule ParserTest do
         {"5 - 5;", 5, "-", 5, :minus},
         {"5 / 5;", 5, "/", 5, :slash},
         {"5 * 5;", 5, "*", 5, :asterisk},
-        {"5 > 5;", 5, ">", 5, :greater},
-        {"5 < 5;", 5, "<", 5, :less},
+        {"5 > 5;", 5, ">", 5, :gt},
+        {"5 < 5;", 5, "<", 5, :lt},
         {"5 == 5;", 5, "==", 5, :eq},
         {"5 != 5;", 5, "!=", 5, :not_eq}
       ]
@@ -178,20 +178,49 @@ defmodule ParserTest do
 
         assert program == %Ast.Program{
                  statements: [
-                   %Ast.InfixExpression{
+                   %Ast.ExpressionStatement{
                      token: token,
-                     left: %Ast.IntegerLiteral{
-                       token: :int,
-                       value: left
-                     },
-                     operator: operator,
-                     right: %Ast.IntegerLiteral{
-                       token: :int,
-                       value: right
+                     expression: %Ast.InfixExpression{
+                       token: token,
+                       left: %Ast.IntegerLiteral{
+                         token: :int,
+                         value: left
+                       },
+                       operator: operator,
+                       right: %Ast.IntegerLiteral{
+                         token: :int,
+                         value: right
+                       }
                      }
                    }
                  ]
                }
+      end
+    end
+
+    test "should test operator precedence" do
+      inputs = [
+        # {"-a * b", "((-a) * b)"},
+        # {"!-a", "(!(-a))"},
+        {"a + b + c", "((a + b) + c)"},
+        # {"a + b - c", "((a + b) - c)"},
+        # {"a * b * c", "((a * b) * c)"},
+        # {"a * b / c", "((a * b) / c)"},
+        # {"a + b / c", "(a + (b / c))"},
+        # {"a + b + c + d", "(((a + b) + c) + d)"}
+        {"a + b * c + d", "((a + (b * c)) + d)"}
+        # {"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"}
+        # {"a * b / c", "((a * b) / c)"}
+      ]
+
+      for test <- inputs do
+        {input, expected} = test
+        tokens = Lexer.init(input)
+        {program, errors} = Parser.parse(tokens)
+
+        assert_no_errors(errors)
+
+        assert to_string(program) == expected
       end
     end
   end
