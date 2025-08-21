@@ -52,11 +52,10 @@ defmodule Parser do
   end
 
   defp parse_program(tokens, program, errors) do
-    {e, rest, errors} = parse_expression_statement(tokens, errors)
+    {e, _rest, errors} = parse_expression_statement(tokens, errors)
 
     program = %{program | statements: program.statements ++ [e]}
     {program, errors}
-    # parse_program(rest, program, errors)
   end
 
   defp check_error(tokens, {expected, literal}, errors) do
@@ -75,25 +74,18 @@ defmodule Parser do
     parse_let_statement(rest, %{let | name: identifier}, errors)
   end
 
-  defp parse_let_statement([{:semicolon, ";"} | rest], let, errors) do
-    {let, rest, errors}
-  end
+  defp parse_let_statement([{:semicolon, ";"} | rest], let, errors), do: {let, rest, errors}
 
-  defp parse_let_statement([_exprssion | rest], let, errors) do
-    parse_let_statement(rest, let, errors)
-  end
+  defp parse_let_statement([_exprssion | rest], let, errors),
+    do: parse_let_statement(rest, let, errors)
 
-  defp parse_let_statement([], let, errors) do
-    {let, [], errors}
-  end
+  defp parse_let_statement([], let, errors), do: {let, [], errors}
 
-  defp parse_return_statement([{:semicolon, ";"} | rest], return, errors) do
-    {return, rest, errors}
-  end
+  defp parse_return_statement([{:semicolon, ";"} | rest], return, errors),
+    do: {return, rest, errors}
 
-  defp parse_return_statement([_expression | rest], return, errors) do
-    parse_return_statement(rest, return, errors)
-  end
+  defp parse_return_statement([_expression | rest], return, errors),
+    do: parse_return_statement(rest, return, errors)
 
   defp parse_expression_statement(tokens, errors) do
     {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
@@ -104,16 +96,8 @@ defmodule Parser do
      }, rest, errors}
   end
 
-  def parse_infix_expression(_precedence, [], [], left), do: {left, [], []}
-
-  def parse_infix_expression(_precedence, [{:semicolon, ";"} | rest], errors, left),
-    do: {left, rest, errors}
-
-  def parse_infix_expression(_precedence, [{:eof, ""} | rest], errors, left),
-    do: {left, rest, errors}
-
-  def parse_infix_expression(precedence, [{token, operator} | rest], errors, left)
-      when token in @infix_tokens do
+  defp parse_infix_expression(precedence, [{token, operator} | rest], errors, left)
+       when token in @infix_tokens do
     next_precedence = next_precedence([{token, operator}])
     {right, rest, errors} = parse_expression(next_precedence, rest, errors, left)
 
@@ -124,21 +108,7 @@ defmodule Parser do
       right: right
     }
 
-    if precedence < next_precedence(rest) do
-      parse_infix_expression(precedence, rest, errors, left)
-    else
-      {left, rest, errors}
-    end
-  end
-
-  def parse_infix_expression(_precedence, tokens, errors, left), do: {left, tokens, errors}
-
-  defp parse_expression(_precedence, [{:eof, ""}], errors, left) do
-    {left, [{:eof, ""}], errors}
-  end
-
-  defp parse_expression(_precedence, [], errors, left) do
-    {left, [], errors}
+    process_precedence(precedence, rest, errors, left)
   end
 
   defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
@@ -148,12 +118,7 @@ defmodule Parser do
 
   defp parse_expression(precedence, [{:int, x} | rest], errors, _left) do
     left = %Ast.IntegerLiteral{token: :int, value: String.to_integer(x)}
-
-    if precedence < next_precedence(rest) do
-      parse_infix_expression(precedence, rest, errors, left)
-    else
-      {left, rest, errors}
-    end
+    process_precedence(precedence, rest, errors, left)
   end
 
   defp parse_expression(precedence, [{:bang, "!"} | rest], errors, left) do
@@ -165,11 +130,7 @@ defmodule Parser do
       right: right
     }
 
-    if precedence < next_precedence(rest) do
-      parse_infix_expression(precedence, rest, errors, left)
-    else
-      {left, rest, errors}
-    end
+    process_precedence(precedence, rest, errors, left)
   end
 
   defp parse_expression(precedence, [{:minus, "-"} | rest], errors, left) do
@@ -181,11 +142,7 @@ defmodule Parser do
       right: right
     }
 
-    if precedence < next_precedence(rest) do
-      parse_infix_expression(precedence, rest, errors, left)
-    else
-      {left, rest, errors}
-    end
+    process_precedence(precedence, rest, errors, left)
   end
 
   defp next_precedence(tokens) do
