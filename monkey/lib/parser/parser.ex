@@ -111,10 +111,19 @@ defmodule Parser do
     process_precedence(precedence, rest, errors, left)
   end
 
-  defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
-    left = %Ast.Identifier{token: :identifier, value: x}
-    process_precedence(precedence, rest, errors, left)
+  defp parse_expression(precdence, [token | rest], errors, _left) do
+    left =
+      case token do
+        {:identifier, x} -> %Ast.Identifier{token: token, value: x}
+      end
+
+    process_precedence(precdence, rest, errors, left)
   end
+
+  # defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
+  #   left = %Ast.Identifier{token: :identifier, value: x}
+  #   process_precedence(precedence, rest, errors, left)
+  # end
 
   defp parse_expression(precedence, [{:int, x} | rest], errors, _left) do
     left = %Ast.IntegerLiteral{token: :int, value: String.to_integer(x)}
