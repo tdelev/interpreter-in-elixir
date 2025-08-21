@@ -17,25 +17,25 @@ defmodule ParserTest do
       assert program == %Ast.Program{
                statements: [
                  %Ast.LetStatement{
-                   token: :let,
+                   token: {:let, "let"},
                    name: %Ast.Identifier{
-                     token: :identifier,
+                     token: {:identifier, "x"},
                      value: "x"
                    },
                    value: nil
                  },
                  %Ast.LetStatement{
-                   token: :let,
+                   token: {:let, "let"},
                    name: %Ast.Identifier{
-                     token: :identifier,
+                     token: {:identifier, "y"},
                      value: "y"
                    },
                    value: nil
                  },
                  %Ast.LetStatement{
-                   token: :let,
+                   token: {:let, "let"},
                    name: %Ast.Identifier{
-                     token: :identifier,
+                     token: {:identifier, "foobar"},
                      value: "foobar"
                    },
                    value: nil
@@ -71,15 +71,15 @@ defmodule ParserTest do
       assert program == %Ast.Program{
                statements: [
                  %Ast.ReturnStatement{
-                   token: :return,
+                   token: {:return, "return"},
                    value: nil
                  },
                  %Ast.ReturnStatement{
-                   token: :return,
+                   token: {:return, "return"},
                    value: nil
                  },
                  %Ast.ReturnStatement{
-                   token: :return,
+                   token: {:return, "return"},
                    value: nil
                  }
                ]
@@ -96,9 +96,9 @@ defmodule ParserTest do
       assert program == %Ast.Program{
                statements: [
                  %Ast.ExpressionStatement{
-                   token: :identifier,
+                   token: {:identifier, "foobar"},
                    expression: %Ast.Identifier{
-                     token: :identifier,
+                     token: {:identifier, "foobar"},
                      value: "foobar"
                    }
                  }
@@ -116,9 +116,9 @@ defmodule ParserTest do
       assert program == %Ast.Program{
                statements: [
                  %Ast.ExpressionStatement{
-                   token: :int,
+                   token: {:int, "5"},
                    expression: %Ast.IntegerLiteral{
-                     token: :int,
+                     token: {:int, "5"},
                      value: 5
                    }
                  }
@@ -142,12 +142,12 @@ defmodule ParserTest do
         assert program == %Ast.Program{
                  statements: [
                    %Ast.ExpressionStatement{
-                     token: token,
+                     token: {token, operator},
                      expression: %Ast.PrefixExpression{
-                       token: token,
+                       token: {token, operator},
                        operator: operator,
                        right: %Ast.IntegerLiteral{
-                         token: :int,
+                         token: {:int, to_string(value)},
                          value: value
                        }
                      }
@@ -183,12 +183,12 @@ defmodule ParserTest do
                      expression: %Ast.InfixExpression{
                        token: token,
                        left: %Ast.IntegerLiteral{
-                         token: :int,
+                         token: {:int, to_string(left)},
                          value: left
                        },
                        operator: operator,
                        right: %Ast.IntegerLiteral{
-                         token: :int,
+                         token: {:int, to_string(right)},
                          value: right
                        }
                      }

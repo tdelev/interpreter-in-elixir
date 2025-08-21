@@ -22,6 +22,7 @@ defmodule Parser do
     :lbracket => @index
   }
 
+  @prefix_tokens [:bang, :minus]
   @infix_tokens [:plus, :minus, :slash, :asterisk, :eq, :not_eq, :lt, :gt]
 
   def parse(tokens) do
@@ -38,14 +39,17 @@ defmodule Parser do
 
   defp parse_program([{:let, "let"} | rest], program, errors) do
     {errors, _} = check_error(rest, {:identifier, "IDENT"}, errors)
-    {stmt, rest, errors} = parse_let_statement(rest, %Ast.LetStatement{token: :let}, errors)
+
+    {stmt, rest, errors} =
+      parse_let_statement(rest, %Ast.LetStatement{token: {:let, "let"}}, errors)
+
     program = %{program | statements: program.statements ++ [stmt]}
     parse_program(rest, program, errors)
   end
 
   defp parse_program([{:return, "return"} | rest], program, errors) do
     {let, rest, errors} =
-      parse_return_statement(rest, %Ast.ReturnStatement{token: :return}, errors)
+      parse_return_statement(rest, %Ast.ReturnStatement{token: {:return, "return"}}, errors)
 
     program = %{program | statements: program.statements ++ [let]}
     parse_program(rest, program, errors)
@@ -69,7 +73,7 @@ defmodule Parser do
   end
 
   defp parse_let_statement([{:identifier, x} | rest], let, errors) do
-    identifier = %Ast.Identifier{token: :identifier, value: x}
+    identifier = %Ast.Identifier{token: {:identifier, x}, value: x}
     {errors, rest} = check_error(rest, {:assign, "="}, errors)
     parse_let_statement(rest, %{let | name: identifier}, errors)
   end
@@ -111,47 +115,27 @@ defmodule Parser do
     process_precedence(precedence, rest, errors, left)
   end
 
+  defp parse_expression(precedence, [{token, operator} | rest], errors, left)
+       when token in @prefix_tokens do
+    {right, rest, errors} = parse_expression(@prefix, rest, errors, left)
+
+    left = %Ast.PrefixExpression{
+      token: {token, operator},
+      operator: operator,
+      right: right
+    }
+
+    process_precedence(precedence, rest, errors, left)
+  end
+
   defp parse_expression(precdence, [token | rest], errors, _left) do
     left =
       case token do
         {:identifier, x} -> %Ast.Identifier{token: token, value: x}
+        {:int, x} -> %Ast.IntegerLiteral{token: token, value: String.to_integer(x)}
       end
 
     process_precedence(precdence, rest, errors, left)
-  end
-
-  # defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
-  #   left = %Ast.Identifier{token: :identifier, value: x}
-  #   process_precedence(precedence, rest, errors, left)
-  # end
-
-  defp parse_expression(precedence, [{:int, x} | rest], errors, _left) do
-    left = %Ast.IntegerLiteral{token: :int, value: String.to_integer(x)}
-    process_precedence(precedence, rest, errors, left)
-  end
-
-  defp parse_expression(precedence, [{:bang, "!"} | rest], errors, left) do
-    {right, rest, errors} = parse_expression(@prefix, rest, errors, left)
-
-    left = %Ast.PrefixExpression{
-      token: :bang,
-      operator: "!",
-      right: right
-    }
-
-    process_precedence(precedence, rest, errors, left)
-  end
-
-  defp parse_expression(precedence, [{:minus, "-"} | rest], errors, left) do
-    {right, rest, errors} = parse_expression(@prefix, rest, errors, left)
-
-    left = %Ast.PrefixExpression{
-      token: :minus,
-      operator: "-",
-      right: right
-    }
-
-    process_precedence(precedence, rest, errors, left)
   end
 
   defp next_precedence(tokens) do
