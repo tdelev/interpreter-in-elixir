@@ -200,17 +200,17 @@ defmodule ParserTest do
 
     test "should test operator precedence" do
       inputs = [
-        # {"-a * b", "((-a) * b)"},
-        # {"!-a", "(!(-a))"},
+        {"-a * b", "((-a) * b)"},
+        {"!-a", "(!(-a))"},
         {"a + b + c", "((a + b) + c)"},
-        # {"a + b - c", "((a + b) - c)"},
-        # {"a * b * c", "((a * b) * c)"},
-        # {"a * b / c", "((a * b) / c)"},
-        # {"a + b / c", "(a + (b / c))"},
-        # {"a + b + c + d", "(((a + b) + c) + d)"}
-        {"a + b * c + d", "((a + (b * c)) + d)"}
-        # {"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"}
-        # {"a * b / c", "((a * b) / c)"}
+        {"a + b - c", "((a + b) - c)"},
+        {"a * b * c", "((a * b) * c)"},
+        {"a * b / c", "((a * b) / c)"},
+        {"a + b / c", "(a + (b / c))"},
+        {"a + b + c + d", "(((a + b) + c) + d)"},
+        {"a + b * c + d", "((a + (b * c)) + d)"},
+        {"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"},
+        {"a * b / c", "((a * b) / c)"}
       ]
 
       for test <- inputs do

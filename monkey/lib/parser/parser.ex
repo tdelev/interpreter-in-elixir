@@ -104,23 +104,18 @@ defmodule Parser do
      }, rest, errors}
   end
 
-  defp parse_expression([{:semicolon, ";"} | rest], errors, left) do
-    {left, rest, errors}
-  end
+  def parse_infix_expression(_precedence, [], [], left), do: {left, [], []}
 
-  def parse_infix_expression([], [], left), do: {left, [], []}
-
-  def parse_infix_expression([{:semicolon, ";"} | rest], errors, left),
+  def parse_infix_expression(_precedence, [{:semicolon, ";"} | rest], errors, left),
     do: {left, rest, errors}
 
-  def parse_infix_expression([{:eof, ""} | rest], errors, left),
+  def parse_infix_expression(_precedence, [{:eof, ""} | rest], errors, left),
     do: {left, rest, errors}
 
-  def parse_infix_expression([{token, operator} | rest], errors, left)
+  def parse_infix_expression(precedence, [{token, operator} | rest], errors, left)
       when token in @infix_tokens do
-    IO.puts("LEFT: #{inspect(left)}")
-    precedence = next_precedence([{token, operator}])
-    {right, rest, errors} = parse_expression(precedence, rest, errors, left)
+    next_precedence = next_precedence([{token, operator}])
+    {right, rest, errors} = parse_expression(next_precedence, rest, errors, left)
 
     left = %Ast.InfixExpression{
       token: token,
@@ -129,37 +124,33 @@ defmodule Parser do
       right: right
     }
 
-    parse_infix_expression(rest, errors, left)
+    if precedence < next_precedence(rest) do
+      parse_infix_expression(precedence, rest, errors, left)
+    else
+      {left, rest, errors}
+    end
   end
 
-  def parse_infix_expression(tokens, errors, left), do: {left, tokens, errors}
+  def parse_infix_expression(_precedence, tokens, errors, left), do: {left, tokens, errors}
 
-  defp parse_expression(precedence, [{:eof, ""}], errors, left) do
+  defp parse_expression(_precedence, [{:eof, ""}], errors, left) do
     {left, [{:eof, ""}], errors}
   end
 
-  defp parse_expression(precedence, [], errors, left) do
+  defp parse_expression(_precedence, [], errors, left) do
     {left, [], errors}
   end
 
   defp parse_expression(precedence, [{:identifier, x} | rest], errors, _left) do
-    IO.puts("rest: #{inspect(rest)}")
-    IO.puts("precedence: #{precedence}")
     left = %Ast.Identifier{token: :identifier, value: x}
-    IO.puts("next precedence: #{next_precedence(rest)}")
-
-    if precedence < next_precedence(rest) do
-      parse_infix_expression(rest, errors, left)
-    else
-      {left, rest, errors}
-    end
+    process_precedence(precedence, rest, errors, left)
   end
 
   defp parse_expression(precedence, [{:int, x} | rest], errors, _left) do
     left = %Ast.IntegerLiteral{token: :int, value: String.to_integer(x)}
 
     if precedence < next_precedence(rest) do
-      parse_infix_expression(rest, errors, left)
+      parse_infix_expression(precedence, rest, errors, left)
     else
       {left, rest, errors}
     end
@@ -175,7 +166,7 @@ defmodule Parser do
     }
 
     if precedence < next_precedence(rest) do
-      parse_infix_expression(rest, errors, left)
+      parse_infix_expression(precedence, rest, errors, left)
     else
       {left, rest, errors}
     end
@@ -191,7 +182,7 @@ defmodule Parser do
     }
 
     if precedence < next_precedence(rest) do
-      parse_infix_expression(rest, errors, left)
+      parse_infix_expression(precedence, rest, errors, left)
     else
       {left, rest, errors}
     end
@@ -200,5 +191,13 @@ defmodule Parser do
   defp next_precedence(tokens) do
     {next_token, _token} = hd(tokens)
     Map.get(@precedence, next_token, @lowest)
+  end
+
+  defp process_precedence(precedence, tokens, errors, left) do
+    if precedence < next_precedence(tokens) do
+      parse_infix_expression(precedence, tokens, errors, left)
+    else
+      {left, tokens, errors}
+    end
   end
 end
