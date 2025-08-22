@@ -91,4 +91,29 @@ defimpl String.Chars, for: Ast.Boolean do
   end
 end
 
-# IO.puts(Ast.Program.)
+defmodule Ast.IfExpression do
+  defstruct [:token, :condition, :if_true, :if_false]
+end
+
+defimpl String.Chars, for: Ast.IfExpression do
+  def to_string(x) do
+    if_false =
+      if x.if_false != nil do
+        "else #{x.if_false}"
+      else
+        ""
+      end
+
+    "if#{x.condition} #{x.if_true}#{if_false}"
+  end
+end
+
+defmodule Ast.BlockStatement do
+  defstruct [:token, :statements]
+end
+
+defimpl String.Chars, for: Ast.BlockStatement do
+  def to_string(x) do
+    Enum.join(x.statements)
+  end
+end

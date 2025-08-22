@@ -26,40 +26,42 @@ defmodule Parser do
   @infix_tokens [:plus, :minus, :slash, :asterisk, :eq, :not_eq, :lt, :gt]
 
   def parse(tokens) do
-    parse_program(tokens, %Program{statements: []}, [])
+    {statements, _rest, errors} = parse_statements(tokens, [], [])
+    {%Program{statements: statements}, errors}
   end
 
-  defp parse_program([], program, errors) do
-    {program, errors}
+  defp parse_statements([], statements, errors) do
+    {statements, [], errors}
   end
 
-  defp parse_program([{:eof, ""}], program, errors) do
-    {program, errors}
+  defp parse_statements([{:eof, ""}], statements, errors) do
+    {statements, [], errors}
   end
 
-  defp parse_program([{:let, "let"} | rest], program, errors) do
-    {errors, _} = check_error(rest, {:identifier, "IDENT"}, errors)
-
-    {stmt, rest, errors} =
-      parse_let_statement(rest, %Ast.LetStatement{token: {:let, "let"}}, errors)
-
-    program = %{program | statements: program.statements ++ [stmt]}
-    parse_program(rest, program, errors)
+  defp parse_statements([{:rbrace, "}"} | rest], statements, errors) do
+    {statements, rest, errors}
   end
 
-  defp parse_program([{:return, "return"} | rest], program, errors) do
-    {let, rest, errors} =
-      parse_return_statement(rest, %Ast.ReturnStatement{token: {:return, "return"}}, errors)
+  defp parse_statements([token | rest], statements, errors) do
+    {{stmt, rest, errors}, more} =
+      case token do
+        {:let, "let"} ->
+          {errors, _} = check_error(rest, {:identifier, "IDENT"}, errors)
+          {parse_let_statement(rest, %Ast.LetStatement{token: {:let, "let"}}, errors), true}
 
-    program = %{program | statements: program.statements ++ [let]}
-    parse_program(rest, program, errors)
-  end
+        {:return, "return"} ->
+          {parse_return_statement(rest, %Ast.ReturnStatement{token: {:return, "return"}}, errors),
+           true}
 
-  defp parse_program(tokens, program, errors) do
-    {e, _rest, errors} = parse_expression_statement(tokens, errors)
+        _ ->
+          {parse_expression_statement([token | rest], errors), false}
+      end
 
-    program = %{program | statements: program.statements ++ [e]}
-    {program, errors}
+    if more do
+      parse_statements(rest, statements ++ [stmt], errors)
+    else
+      {statements ++ [stmt], rest, errors}
+    end
   end
 
   defp check_error(tokens, {expected, literal}, errors) do
@@ -106,7 +108,7 @@ defmodule Parser do
     {right, rest, errors} = parse_expression(next_precedence, rest, errors, left)
 
     left = %Ast.InfixExpression{
-      token: token,
+      token: {token, operator},
       left: left,
       operator: operator,
       right: right
@@ -128,14 +130,42 @@ defmodule Parser do
     process_precedence(precedence, rest, errors, left)
   end
 
-  defp parse_expression(precdence, [token | rest], errors, _left) do
-    left =
+  defp parse_expression(precedence, [token | rest], errors, left) do
+    {left, rest, errors} =
       case token do
-        {:identifier, x} -> %Ast.Identifier{token: token, value: x}
-        {:int, x} -> %Ast.IntegerLiteral{token: token, value: String.to_integer(x)}
+        {:identifier, x} ->
+          {%Ast.Identifier{token: token, value: x}, rest, errors}
+
+        {:int, x} ->
+          {%Ast.IntegerLiteral{token: token, value: String.to_integer(x)}, rest, errors}
+
+        {:t, _} ->
+          {%Ast.Boolean{token: token, value: true}, rest, errors}
+
+        {:f, _} ->
+          {%Ast.Boolean{token: token, value: false}, rest, errors}
+
+        {:lparen, "("} ->
+          {left, rest, errors} = parse_expression(@lowest, rest, errors, left)
+          {left, tl(rest), errors}
+
+        {:if, "if"} ->
+          {condition, rest, errors} = parse_expression(@lowest, rest, errors, left)
+          {if_true, rest, errors} = parse_block_statement(tl(rest), errors)
+          exp = %Ast.IfExpression{token: token, condition: condition, if_true: if_true}
+          {exp, rest, errors}
       end
 
-    process_precedence(precdence, rest, errors, left)
+    process_precedence(precedence, rest, errors, left)
+  end
+
+  defp parse_block_statement(tokens, errors) do
+    {statements, rest, errors} = parse_statements(tokens, [], errors)
+
+    {%Ast.BlockStatement{
+       token: {:lbrace, "{"},
+       statements: statements
+     }, rest, errors}
   end
 
   defp next_precedence(tokens) do

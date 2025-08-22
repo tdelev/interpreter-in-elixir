@@ -126,28 +126,29 @@ defmodule ParserTest do
              }
     end
 
-    # test "should parse boolean literal expression" do
-    #   inputs = [{"true;", true}, {"false;", false}]
-    #
-    #   for test <- inputs do
-    #     tokens = Lexer.init(test)
-    #     {program, errors} = Parser.parse(tokens)
-    #
-    #     assert_no_errors(errors)
-    #
-    #     assert program == %Ast.Program{
-    #              statements: [
-    #                %Ast.ExpressionStatement{
-    #                  token: {:, "5"},
-    #                  expression: %Ast.Boolean{
-    #                    token: {:int, "5"},
-    #                    value: 5
-    #                  }
-    #                }
-    #              ]
-    #            }
-    #   end
-    # end
+    test "should parse boolean literal expression" do
+      inputs = [{"true;", true, :t}, {"false;", false, :f}]
+
+      for test <- inputs do
+        {input, value, token} = test
+        tokens = Lexer.init(input)
+        {program, errors} = Parser.parse(tokens)
+
+        assert_no_errors(errors)
+
+        assert program == %Ast.Program{
+                 statements: [
+                   %Ast.ExpressionStatement{
+                     token: {token, to_string(value)},
+                     expression: %Ast.Boolean{
+                       token: {token, to_string(value)},
+                       value: value
+                     }
+                   }
+                 ]
+               }
+      end
+    end
 
     test "should parse prefix expression" do
       inputs = [
@@ -202,9 +203,9 @@ defmodule ParserTest do
         assert program == %Ast.Program{
                  statements: [
                    %Ast.ExpressionStatement{
-                     token: token,
+                     token: {token, operator},
                      expression: %Ast.InfixExpression{
-                       token: token,
+                       token: {token, operator},
                        left: %Ast.IntegerLiteral{
                          token: {:int, to_string(left)},
                          value: left
@@ -233,7 +234,12 @@ defmodule ParserTest do
         {"a + b + c + d", "(((a + b) + c) + d)"},
         {"a + b * c + d", "((a + (b * c)) + d)"},
         {"a + b * c + d / e - f", "(((a + (b * c)) + (d / e)) - f)"},
-        {"a * b / c", "((a * b) / c)"}
+        {"a * b / c", "((a * b) / c)"},
+        {"1 + (2 + 3) + 4", "((1 + (2 + 3)) + 4)"},
+        {"(5 + 5) * 2", "((5 + 5) * 2)"},
+        {"2 / (5 + 5)", "(2 / (5 + 5))"},
+        {"-(5 + 5)", "(-(5 + 5))"},
+        {"!(true == true)", "(!(true == true))"}
       ]
 
       for test <- inputs do
@@ -245,6 +251,41 @@ defmodule ParserTest do
 
         assert to_string(program) == expected
       end
+    end
+
+    test "should parse if expression" do
+      input = "if (x < y) { x }"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   expression: %Ast.IfExpression{
+                     condition: %Ast.InfixExpression{
+                       left: %Ast.Identifier{token: {:identifier, "x"}, value: "x"},
+                       operator: "<",
+                       right: %Ast.Identifier{token: {:identifier, "y"}, value: "y"},
+                       token: {:lt, "<"}
+                     },
+                     if_false: nil,
+                     if_true: %Ast.BlockStatement{
+                       token: {:lbrace, "{"},
+                       statements: [
+                         %Ast.ExpressionStatement{
+                           token: {:identifier, "x"},
+                           expression: %Ast.Identifier{token: {:identifier, "x"}, value: "x"}
+                         }
+                       ]
+                     },
+                     token: {:if, "if"}
+                   },
+                   token: {:if, "if"}
+                 }
+               ]
+             }
     end
   end
 
