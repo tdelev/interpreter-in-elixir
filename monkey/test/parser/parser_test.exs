@@ -126,6 +126,29 @@ defmodule ParserTest do
              }
     end
 
+    # test "should parse boolean literal expression" do
+    #   inputs = [{"true;", true}, {"false;", false}]
+    #
+    #   for test <- inputs do
+    #     tokens = Lexer.init(test)
+    #     {program, errors} = Parser.parse(tokens)
+    #
+    #     assert_no_errors(errors)
+    #
+    #     assert program == %Ast.Program{
+    #              statements: [
+    #                %Ast.ExpressionStatement{
+    #                  token: {:, "5"},
+    #                  expression: %Ast.Boolean{
+    #                    token: {:int, "5"},
+    #                    value: 5
+    #                  }
+    #                }
+    #              ]
+    #            }
+    #   end
+    # end
+
     test "should parse prefix expression" do
       inputs = [
         {"!5;", "!", 5, :bang},

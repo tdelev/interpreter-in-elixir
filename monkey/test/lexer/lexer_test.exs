@@ -31,8 +31,18 @@ defmodule LexerTest do
       let result = add(five, ten);
       !-/*5;
       5 < 10 > 5;
+
+      if (5 < 10) {
+        return true;
+      } else {
+        return false;
+      }
+
       10 == 10;
       10 != 9;
+      \"foobar\"
+      \"foo bar\"
+      [1, 2];
       "
 
       expected = [
@@ -84,6 +94,23 @@ defmodule LexerTest do
         {:gt, ">"},
         {:int, "5"},
         {:semicolon, ";"},
+        {:if, "if"},
+        {:lparen, "("},
+        {:int, "5"},
+        {:lt, "<"},
+        {:int, "10"},
+        {:rparen, ")"},
+        {:lbrace, "{"},
+        {:return, "return"},
+        {:t, "true"},
+        {:semicolon, ";"},
+        {:rbrace, "}"},
+        {:else, "else"},
+        {:lbrace, "{"},
+        {:return, "return"},
+        {:f, "false"},
+        {:semicolon, ";"},
+        {:rbrace, "}"},
         {:int, "10"},
         {:eq, "=="},
         {:int, "10"},
@@ -91,6 +118,14 @@ defmodule LexerTest do
         {:int, "10"},
         {:not_eq, "!="},
         {:int, "9"},
+        {:semicolon, ";"},
+        {:string, "foobar"},
+        {:string, "foo bar"},
+        {:lbracket, "["},
+        {:int, "1"},
+        {:comma, ","},
+        {:int, "2"},
+        {:rbracket, "]"},
         {:semicolon, ";"},
         {:eof, ""}
       ]

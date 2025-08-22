@@ -81,4 +81,14 @@ defimpl String.Chars, for: Ast.InfixExpression do
   end
 end
 
+defmodule Ast.Boolean do
+  defstruct [:token, :value]
+end
+
+defimpl String.Chars, for: Ast.Boolean do
+  def to_string(x) do
+    "#{x.value}"
+  end
+end
+
 # IO.puts(Ast.Program.)

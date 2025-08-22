@@ -51,30 +51,32 @@ defmodule Lexer do
   defp tokenize(<<"-", rest::binary>>), do: {{:minus, "-"}, rest}
   defp tokenize(<<"/", rest::binary>>), do: {{:slash, "/"}, rest}
   defp tokenize(<<"*", rest::binary>>), do: {{:asterisk, "*"}, rest}
+  defp tokenize(<<"[", rest::binary>>), do: {{:lbracket, "["}, rest}
+  defp tokenize(<<"]", rest::binary>>), do: {{:rbracket, "]"}, rest}
+  defp tokenize(<<"\"", rest::binary>>), do: read_string(rest, [])
   defp tokenize(<<c::8, rest::binary>>) when is_letter(c), do: read_identifier(rest, <<c>>)
   defp tokenize(<<c::8, rest::binary>>) when is_digit(c), do: read_number(rest, <<c>>)
   defp tokenize(<<c::8, rest::binary>>), do: {{:ilegal, <<c>>}, rest}
 
-  defp read_identifier(<<c::8, rest::binary>>, acc) when is_letter(c) do
-    read_identifier(rest, [acc | <<c>>])
-  end
+  defp read_identifier(<<c::8, rest::binary>>, acc) when is_letter(c),
+    do: read_identifier(rest, [acc | <<c>>])
 
-  defp read_identifier(rest, acc) do
-    {IO.iodata_to_binary(acc) |> tokenize_word(), rest}
-  end
+  defp read_identifier(rest, acc), do: {IO.iodata_to_binary(acc) |> tokenize_word(), rest}
 
-  defp read_number(<<c::8, rest::binary>>, acc) when is_digit(c) do
-    read_number(rest, [acc | <<c>>])
-  end
+  defp read_string(<<"\"", rest::binary>>, acc), do: {{:string, IO.iodata_to_binary(acc)}, rest}
+  defp read_string(<<c::8, rest::binary>>, acc), do: read_string(rest, [acc | <<c>>])
 
-  defp read_number(rest, acc) do
-    {{:int, IO.iodata_to_binary(acc)}, rest}
-  end
+  defp read_number(<<c::8, rest::binary>>, acc) when is_digit(c),
+    do: read_number(rest, [acc | <<c>>])
+
+  defp read_number(rest, acc), do: {{:int, IO.iodata_to_binary(acc)}, rest}
 
   defp tokenize_word("let"), do: {:let, "let"}
   defp tokenize_word("fn"), do: {:function, "fn"}
   defp tokenize_word("if"), do: {:if, "if"}
   defp tokenize_word("else"), do: {:else, "else"}
   defp tokenize_word("return"), do: {:return, "return"}
+  defp tokenize_word("true"), do: {:t, "true"}
+  defp tokenize_word("false"), do: {:f, "false"}
   defp tokenize_word(ident), do: {:identifier, ident}
 end
