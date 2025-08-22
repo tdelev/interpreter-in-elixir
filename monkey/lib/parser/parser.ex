@@ -154,6 +154,17 @@ defmodule Parser do
           {if_true, rest, errors} = parse_block_statement(tl(rest), errors)
           exp = %Ast.IfExpression{token: token, condition: condition, if_true: if_true}
           {exp, rest, errors}
+
+        {:function, "fn"} ->
+          {parameters, rest, errors} = parse_function_parameters(tl(rest), errors, [])
+
+          {body, rest, errors} = parse_block_statement(tl(rest), errors)
+
+          {%Ast.FunctionLiteral{
+             token: {:function, "fn"},
+             parameters: parameters,
+             body: body
+           }, rest, errors}
       end
 
     process_precedence(precedence, rest, errors, left)
@@ -166,6 +177,23 @@ defmodule Parser do
        token: {:lbrace, "{"},
        statements: statements
      }, rest, errors}
+  end
+
+  defp parse_function_parameters([{:rparen, ")"} | rest], errors, parameters),
+    do: {parameters, rest, errors}
+
+  defp parse_function_parameters([{:comma, ","} | rest], errors, parameters),
+    do: parse_function_parameters(rest, errors, parameters)
+
+  defp parse_function_parameters([token | rest], errors, parameters) do
+    {_, value} = token
+
+    id = %Ast.Identifier{
+      token: token,
+      value: value
+    }
+
+    parse_function_parameters(rest, errors, parameters ++ [id])
   end
 
   defp next_precedence(tokens) do

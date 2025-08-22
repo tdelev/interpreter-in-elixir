@@ -287,6 +287,43 @@ defmodule ParserTest do
                ]
              }
     end
+
+    test "should parse function literal" do
+      input = "fn(x, y) { x + y; }"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   expression: %Ast.FunctionLiteral{
+                     token: {:function, "fn"},
+                     parameters: [
+                       %Ast.Identifier{token: {:identifier, "x"}, value: "x"},
+                       %Ast.Identifier{token: {:identifier, "y"}, value: "y"}
+                     ],
+                     body: %Ast.BlockStatement{
+                       token: {:lbrace, "{"},
+                       statements: [
+                         %Ast.ExpressionStatement{
+                           token: {:plus, "+"},
+                           expression: %Ast.InfixExpression{
+                             token: {:plus, "+"},
+                             left: %Ast.Identifier{token: {:identifier, "x"}, value: "x"},
+                             operator: "+",
+                             right: %Ast.Identifier{token: {:identifier, "y"}, value: "y"}
+                           }
+                         }
+                       ]
+                     }
+                   },
+                   token: {:function, "fn"}
+                 }
+               ]
+             }
+    end
   end
 
   defp assert_no_errors(errors), do: assert(length(errors) == 0)

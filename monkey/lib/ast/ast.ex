@@ -117,3 +117,14 @@ defimpl String.Chars, for: Ast.BlockStatement do
     Enum.join(x.statements)
   end
 end
+
+defmodule Ast.FunctionLiteral do
+  defstruct [:token, :parameters, :body]
+end
+
+defimpl String.Chars, for: Ast.FunctionLiteral do
+  def to_string(x) do
+    params = Enum.join(x.parameters, ", ")
+    "fn (#{params}) #{x.body}"
+  end
+end
