@@ -23,7 +23,7 @@ defmodule Parser do
   }
 
   @prefix_tokens [:bang, :minus]
-  @infix_tokens [:plus, :minus, :slash, :asterisk, :eq, :not_eq, :lt, :gt]
+  @infix_tokens [:plus, :minus, :slash, :asterisk, :eq, :not_eq, :lt, :gt, :lparen]
 
   def parse(tokens) do
     {statements, _rest, errors} = parse_statements(tokens, [], [])
@@ -62,6 +62,19 @@ defmodule Parser do
     else
       {statements ++ [stmt], rest, errors}
     end
+  end
+
+  defp parse_call_arguments([{:rparen, ")"} | rest], arguments, errors, _left) do
+    {arguments, rest, errors}
+  end
+
+  defp parse_call_arguments([{:comma, ","} | rest], arguments, errors, left) do
+    parse_call_arguments(rest, arguments, errors, left)
+  end
+
+  defp parse_call_arguments(tokens, arguments, errors, left) do
+    {left, tokens, errors} = parse_expression(@lowest, tokens, errors, left)
+    parse_call_arguments(tokens, arguments ++ [left], errors, nil)
   end
 
   defp check_error(tokens, {expected, literal}, errors) do
@@ -104,15 +117,28 @@ defmodule Parser do
 
   defp parse_infix_expression(precedence, [{token, operator} | rest], errors, left)
        when token in @infix_tokens do
-    next_precedence = next_precedence([{token, operator}])
-    {right, rest, errors} = parse_expression(next_precedence, rest, errors, left)
+    {left, rest, errors} =
+      case token do
+        :lparen ->
+          {arguments, rest, errors} = parse_call_arguments(rest, [], errors, nil)
 
-    left = %Ast.InfixExpression{
-      token: {token, operator},
-      left: left,
-      operator: operator,
-      right: right
-    }
+          {%Ast.CallExpression{
+             token: {token, operator},
+             function: left,
+             arguments: arguments
+           }, rest, errors}
+
+        _ ->
+          next_precedence = next_precedence([{token, operator}])
+          {right, rest, errors} = parse_expression(next_precedence, rest, errors, left)
+
+          {%Ast.InfixExpression{
+             token: {token, operator},
+             left: left,
+             operator: operator,
+             right: right
+           }, rest, errors}
+      end
 
     process_precedence(precedence, rest, errors, left)
   end
@@ -152,7 +178,22 @@ defmodule Parser do
         {:if, "if"} ->
           {condition, rest, errors} = parse_expression(@lowest, rest, errors, left)
           {if_true, rest, errors} = parse_block_statement(tl(rest), errors)
-          exp = %Ast.IfExpression{token: token, condition: condition, if_true: if_true}
+          [next_token | else_rest] = tl(rest)
+
+          {if_false, rest, errors} =
+            if next_token == {:else, "else"} do
+              parse_block_statement(tl(else_rest), errors)
+            else
+              {nil, rest, errors}
+            end
+
+          exp = %Ast.IfExpression{
+            token: token,
+            condition: condition,
+            if_true: if_true,
+            if_false: if_false
+          }
+
           {exp, rest, errors}
 
         {:function, "fn"} ->

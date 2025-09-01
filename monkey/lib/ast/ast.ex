@@ -128,3 +128,14 @@ defimpl String.Chars, for: Ast.FunctionLiteral do
     "fn (#{params}) #{x.body}"
   end
 end
+
+defmodule Ast.CallExpression do
+  defstruct [:token, :function, :arguments]
+end
+
+defimpl String.Chars, for: Ast.CallExpression do
+  def to_string(x) do
+    params = Enum.join(x.arguments, ", ")
+    "#{x.function} (#{params})"
+  end
+end

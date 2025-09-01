@@ -239,7 +239,9 @@ defmodule ParserTest do
         {"(5 + 5) * 2", "((5 + 5) * 2)"},
         {"2 / (5 + 5)", "(2 / (5 + 5))"},
         {"-(5 + 5)", "(-(5 + 5))"},
-        {"!(true == true)", "(!(true == true))"}
+        {"!(true == true)", "(!(true == true))"},
+        {"5 > 4 == 3 < 4", "((5 > 4) == (3 < 4))"},
+        {"5 > 4 != 3 < 4", "((5 > 4) != (3 < 4))"}
       ]
 
       for test <- inputs do
@@ -271,6 +273,49 @@ defmodule ParserTest do
                        token: {:lt, "<"}
                      },
                      if_false: nil,
+                     if_true: %Ast.BlockStatement{
+                       token: {:lbrace, "{"},
+                       statements: [
+                         %Ast.ExpressionStatement{
+                           token: {:identifier, "x"},
+                           expression: %Ast.Identifier{token: {:identifier, "x"}, value: "x"}
+                         }
+                       ]
+                     },
+                     token: {:if, "if"}
+                   },
+                   token: {:if, "if"}
+                 }
+               ]
+             }
+    end
+
+    test "should parse if/else expression" do
+      input = "if (x < y) { x } else { y }"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   expression: %Ast.IfExpression{
+                     condition: %Ast.InfixExpression{
+                       left: %Ast.Identifier{token: {:identifier, "x"}, value: "x"},
+                       operator: "<",
+                       right: %Ast.Identifier{token: {:identifier, "y"}, value: "y"},
+                       token: {:lt, "<"}
+                     },
+                     if_false: %Ast.BlockStatement{
+                       token: {:lbrace, "{"},
+                       statements: [
+                         %Ast.ExpressionStatement{
+                           token: {:identifier, "y"},
+                           expression: %Ast.Identifier{token: {:identifier, "y"}, value: "y"}
+                         }
+                       ]
+                     },
                      if_true: %Ast.BlockStatement{
                        token: {:lbrace, "{"},
                        statements: [
@@ -320,6 +365,41 @@ defmodule ParserTest do
                      }
                    },
                    token: {:function, "fn"}
+                 }
+               ]
+             }
+    end
+
+    test "should parse call expression" do
+      input = "add(1, 2 * 3, 4 + 5)"
+      tokens = Lexer.init(input)
+      {program, errors} = Parser.parse(tokens)
+
+      assert_no_errors(errors)
+
+      assert program == %Ast.Program{
+               statements: [
+                 %Ast.ExpressionStatement{
+                   expression: %Ast.CallExpression{
+                     token: {:lparen, "("},
+                     arguments: [
+                       %Ast.IntegerLiteral{token: {:int, "1"}, value: 1},
+                       %Ast.InfixExpression{
+                         token: {:asterisk, "*"},
+                         left: %Ast.IntegerLiteral{token: {:int, "2"}, value: 2},
+                         operator: "*",
+                         right: %Ast.IntegerLiteral{token: {:int, "3"}, value: 3}
+                       },
+                       %Ast.InfixExpression{
+                         token: {:plus, "+"},
+                         left: %Ast.IntegerLiteral{token: {:int, "4"}, value: 4},
+                         operator: "+",
+                         right: %Ast.IntegerLiteral{token: {:int, "5"}, value: 5}
+                       }
+                     ],
+                     function: %Ast.Identifier{token: {:identifier, "add"}, value: "add"}
+                   },
+                   token: {:lparen, "("}
                  }
                ]
              }
