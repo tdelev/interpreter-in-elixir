@@ -4,44 +4,32 @@ defmodule ParserTest do
 
   describe "test Parser.parse/1" do
     test "should parse let statements" do
-      input = "
-        let x = 5;
-        let y = 10;
-        let foobar = 123124;
-      "
-      tokens = Lexer.init(input)
-      {program, errors} = Parser.parse(tokens)
+      inputs = [
+        {"let x = 5;", "x", %Ast.IntegerLiteral{token: {:int, "5"}, value: 5}},
+        {"let y = true;", "y", %Ast.Boolean{token: {:t, "true"}, value: true}},
+        {"let foobar = y;", "foobar", %Ast.Identifier{token: {:identifier, "y"}, value: "y"}}
+      ]
 
-      assert_no_errors(errors)
+      for test <- inputs do
+        {input, id, value} = test
+        tokens = Lexer.init(input)
+        {program, errors} = Parser.parse(tokens)
 
-      assert program == %Ast.Program{
-               statements: [
-                 %Ast.LetStatement{
-                   token: {:let, "let"},
-                   name: %Ast.Identifier{
-                     token: {:identifier, "x"},
-                     value: "x"
-                   },
-                   value: nil
-                 },
-                 %Ast.LetStatement{
-                   token: {:let, "let"},
-                   name: %Ast.Identifier{
-                     token: {:identifier, "y"},
-                     value: "y"
-                   },
-                   value: nil
-                 },
-                 %Ast.LetStatement{
-                   token: {:let, "let"},
-                   name: %Ast.Identifier{
-                     token: {:identifier, "foobar"},
-                     value: "foobar"
-                   },
-                   value: nil
-                 }
-               ]
-             }
+        assert_no_errors(errors)
+
+        assert program == %Ast.Program{
+                 statements: [
+                   %Ast.LetStatement{
+                     token: {:let, "let"},
+                     name: %Ast.Identifier{
+                       token: {:identifier, id},
+                       value: id
+                     },
+                     value: value
+                   }
+                 ]
+               }
+      end
     end
 
     test "should produce errors from parsing" do
@@ -72,15 +60,19 @@ defmodule ParserTest do
                statements: [
                  %Ast.ReturnStatement{
                    token: {:return, "return"},
-                   value: nil
+                   value: %Ast.IntegerLiteral{token: {:int, "5"}, value: 5}
                  },
                  %Ast.ReturnStatement{
                    token: {:return, "return"},
-                   value: nil
+                   value: %Ast.IntegerLiteral{token: {:int, "10"}, value: 10}
                  },
                  %Ast.ReturnStatement{
                    token: {:return, "return"},
-                   value: nil
+                   value: %Ast.CallExpression{
+                     function: %Ast.Identifier{value: "add", token: {:identifier, "add"}},
+                     arguments: [%Ast.IntegerLiteral{token: {:int, "15"}, value: 15}],
+                     token: {:lparen, "("}
+                   }
                  }
                ]
              }

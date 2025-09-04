@@ -17,7 +17,7 @@ end
 
 defimpl String.Chars, for: Ast.LetStatement do
   def to_string(let) do
-    "#{let.token} #{let.name} = #{let.value};"
+    "#{let.token |> elem(1)} #{let.name} = #{let.value};"
   end
 end
 

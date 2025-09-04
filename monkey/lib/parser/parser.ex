@@ -47,7 +47,20 @@ defmodule Parser do
       case token do
         {:let, "let"} ->
           {errors, _} = check_error(rest, {:identifier, "IDENT"}, errors)
-          {parse_let_statement(rest, %Ast.LetStatement{token: {:let, "let"}}, errors), true}
+
+          if length(errors) > 0 do
+            more = after_semicolon(rest)
+            {{nil, more, errors}, true}
+          else
+            {errors, _} = check_error(tl(rest), {:assign, "="}, errors)
+
+            if length(errors) > 0 do
+              more = after_semicolon(rest)
+              {{nil, more, errors}, true}
+            else
+              {parse_let_statement(rest, %Ast.LetStatement{token: {:let, "let"}}, errors), true}
+            end
+          end
 
         {:return, "return"} ->
           {parse_return_statement(rest, %Ast.ReturnStatement{token: {:return, "return"}}, errors),
@@ -63,6 +76,9 @@ defmodule Parser do
       {statements ++ [stmt], rest, errors}
     end
   end
+
+  defp after_semicolon([{:semicolon, ";"} | rest]), do: rest
+  defp after_semicolon([_token | rest]), do: after_semicolon(rest)
 
   defp parse_call_arguments([{:rparen, ")"} | rest], arguments, errors, _left) do
     {arguments, rest, errors}
@@ -87,24 +103,33 @@ defmodule Parser do
     end
   end
 
-  defp parse_let_statement([{:identifier, x} | rest], let, errors) do
+  defp parse_let_statement([{:identifier, x} | [{:assign, "="} | rest]], let, errors) do
     identifier = %Ast.Identifier{token: {:identifier, x}, value: x}
-    {errors, rest} = check_error(rest, {:assign, "="}, errors)
     parse_let_statement(rest, %{let | name: identifier}, errors)
   end
 
   defp parse_let_statement([{:semicolon, ";"} | rest], let, errors), do: {let, rest, errors}
 
-  defp parse_let_statement([_exprssion | rest], let, errors),
-    do: parse_let_statement(rest, let, errors)
+  defp parse_let_statement([{:eof, ""} | rest], let, errors), do: {let, rest, errors}
+
+  defp parse_let_statement([{:assign, "="} | rest], let, errors), do: {let, rest, errors}
 
   defp parse_let_statement([], let, errors), do: {let, [], errors}
+
+  defp parse_let_statement(tokens, let, errors) do
+    {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
+    let = %{let | value: expression}
+    parse_let_statement(rest, let, errors)
+  end
 
   defp parse_return_statement([{:semicolon, ";"} | rest], return, errors),
     do: {return, rest, errors}
 
-  defp parse_return_statement([_expression | rest], return, errors),
-    do: parse_return_statement(rest, return, errors)
+  defp parse_return_statement(tokens, return, errors) do
+    {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
+    return = %{return | value: expression}
+    parse_return_statement(rest, return, errors)
+  end
 
   defp parse_expression_statement(tokens, errors) do
     {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
