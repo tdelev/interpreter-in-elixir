@@ -7,13 +7,13 @@ defmodule AstTest do
       input = %Ast.Program{
         statements: [
           %Ast.LetStatement{
-            token: :let,
+            token: {:let, "let"},
             name: %Ast.Identifier{
-              token: :identifier,
+              token: {:identifier, "myVar"},
               value: "myVar"
             },
             value: %Ast.Identifier{
-              token: :identifier,
+              token: {:identifier, "anotherVar"},
               value: "anotherVar"
             }
           }
