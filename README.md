@@ -2,7 +2,7 @@
 
 This is implementation of the well-known [Writing and Interpreter in Go](https://interpreterbook.com/) book in Elixir.
 
-## Running the interpreterbook
+## Running the interpreter
 
 ```bash
 $ cd monkey/
