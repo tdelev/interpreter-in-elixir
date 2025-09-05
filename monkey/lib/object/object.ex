@@ -23,3 +23,12 @@ defimpl String.Chars, for: Object.Boolean do
     "#{i.value}"
   end
 end
+
+defmodule Object.Null do
+end
+
+defimpl String.Chars, for: Object.Null do
+  def to_string(n) do
+    "null"
+  end
+end

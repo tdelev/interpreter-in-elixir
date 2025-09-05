@@ -11,7 +11,7 @@ defmodule Repl do
       else
         # IO.puts(inspect(program))
         # IO.puts(to_string(program))
-        result = hd(Eval.eval(program))
+        result = Eval.eval(program)
         IO.puts(result)
       end
 

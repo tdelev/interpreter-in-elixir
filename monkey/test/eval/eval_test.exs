@@ -5,7 +5,7 @@ defmodule EvalTest do
   defp run(input) do
     tokens = Lexer.init(input)
     {program, _errors} = Parser.parse(tokens)
-    hd(Eval.eval(program))
+    Eval.eval(program)
   end
 
   describe "test Eval.eval/1" do
@@ -21,7 +21,10 @@ defmodule EvalTest do
         [
           {"-10", %Object.Integer{value: -10, type: :int}},
           {"!true", Object.Boolean.f()},
-          {"!false", Object.Boolean.t()}
+          {"!false", Object.Boolean.t()},
+          {"!!false", Object.Boolean.f()},
+          {"!!true", Object.Boolean.t()},
+          {"!5", Object.Boolean.f()}
         ]
 
       for input <- inputs do
@@ -31,11 +34,50 @@ defmodule EvalTest do
       end
     end
 
-    test "should eval math expression" do
-      input = "10 * 15"
-      result = run(input)
+    test "should eval math expressions" do
+      inputs = [
+        {"10 * 15", 150},
+        {"(1 + 2) * 3", 9},
+        {"(10 - 5) * 2", 10}
+      ]
 
-      assert result == %Object.Integer{value: 150, type: :int}
+      for input <- inputs do
+        {input, expected} = input
+        result = run(input)
+        assert result == %Object.Integer{value: expected, type: :int}
+      end
+    end
+
+    test "should eval compare expressions" do
+      inputs = [
+        {"10 < 15", true},
+        {"10 > 15", false},
+        {"10 == 15", false},
+        {"10 != 15", true},
+        {"5 == 5", true},
+        {"5 != 5", false}
+      ]
+
+      for input <- inputs do
+        {input, expected} = input
+        result = run(input)
+        assert result == %Object.Boolean{value: expected, type: :boolean}
+      end
+    end
+
+    test "should eval if/else expressions" do
+      inputs = [
+        {"if (true) { 10 } else { 20 }", 10},
+        {"if (false) { 10 } else { 20 }", 20},
+        {"if (10 > 5) { 10 } else { 20 }", 10},
+        {"if (10 < 5) { 10 } else { 20 }", 20}
+      ]
+
+      for input <- inputs do
+        {input, expected} = input
+        result = run(input)
+        assert result == %Object.Integer{value: expected, type: :int}
+      end
     end
   end
 end

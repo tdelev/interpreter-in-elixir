@@ -1,17 +1,21 @@
 defmodule Eval do
   def eval(%Ast.Program{statements: statements}) do
-    eval_statements(statements, [])
+    hd(eval_statements(statements, []))
   end
 
   defp eval_statements([], result), do: result
 
   defp eval_statements([stmt | rest], result) do
     res = eval_statement(stmt)
-    eval_statements(rest, result ++ [res])
+    eval_statements(rest, [res | result])
   end
 
   defp eval_statement(%Ast.ExpressionStatement{token: _token, expression: expression}) do
     eval_expression(expression)
+  end
+
+  defp eval_expression(%Ast.BlockStatement{token: _token, statements: statements}) do
+    hd(eval_statements(statements, []))
   end
 
   defp eval_expression(%Ast.IntegerLiteral{token: _token, value: value}) do
@@ -25,8 +29,15 @@ defmodule Eval do
         %Object.Integer{value: -right_value, type: :int}
 
       "!" ->
-        %Object.Boolean{value: right_value, type: _type} = eval_expression(right)
-        %Object.Boolean{value: !right_value, type: :boolean}
+        expression = eval_expression(right)
+
+        case expression.type do
+          :boolean ->
+            %Object.Boolean{value: !expression.value, type: :boolean}
+
+          _ ->
+            Object.Boolean.f()
+        end
     end
   end
 
@@ -47,14 +58,36 @@ defmodule Eval do
     %Object.Integer{value: left_value, type: _type} = eval_expression(left)
     %Object.Integer{value: right_value, type: _type} = eval_expression(right)
 
-    result =
+    {result, type} =
       case operator do
-        "+" -> left_value + right_value
-        "-" -> left_value - right_value
-        "*" -> left_value * right_value
-        "/" -> left_value / right_value
+        "+" -> {left_value + right_value, :int}
+        "-" -> {left_value - right_value, :int}
+        "*" -> {left_value * right_value, :int}
+        "/" -> {left_value / right_value, :int}
+        "<" -> {left_value < right_value, :boolean}
+        "==" -> {left_value == right_value, :boolean}
+        ">" -> {left_value > right_value, :boolean}
+        "!=" -> {left_value != right_value, :boolean}
       end
 
-    %Object.Integer{value: result, type: :int}
+    case type do
+      :int -> %Object.Integer{value: result, type: :int}
+      :boolean -> %Object.Boolean{value: result, type: :boolean}
+    end
+  end
+
+  defp eval_expression(%Ast.IfExpression{
+         token: _token,
+         condition: condition,
+         if_true: if_true,
+         if_false: if_false
+       }) do
+    result = eval_expression(condition)
+
+    if result.value do
+      eval_expression(if_true)
+    else
+      eval_expression(if_false)
+    end
   end
 end
