@@ -1,6 +1,5 @@
 defmodule Eval do
   def eval(%Ast.Program{statements: statements}) do
-    IO.puts("program: #{inspect(statements)}")
     eval_statements(statements, [])
   end
 
@@ -17,6 +16,26 @@ defmodule Eval do
 
   defp eval_expression(%Ast.IntegerLiteral{token: _token, value: value}) do
     %Object.Integer{value: value, type: :int}
+  end
+
+  defp eval_expression(%Ast.PrefixExpression{token: _token, operator: operator, right: right}) do
+    case operator do
+      "-" ->
+        %Object.Integer{value: right_value, type: _type} = eval_expression(right)
+        %Object.Integer{value: -right_value, type: :int}
+
+      "!" ->
+        %Object.Boolean{value: right_value, type: _type} = eval_expression(right)
+        %Object.Boolean{value: !right_value, type: :boolean}
+    end
+  end
+
+  defp eval_expression(%Ast.Boolean{token: _token, value: value}) do
+    if value do
+      Object.Boolean.t()
+    else
+      Object.Boolean.f()
+    end
   end
 
   defp eval_expression(%Ast.InfixExpression{

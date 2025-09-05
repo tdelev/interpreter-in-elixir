@@ -8,10 +8,12 @@ defmodule Repl do
 
       if length(errors) > 0 do
         Enum.each(errors, fn error -> IO.puts(inspect(error)) end)
+      else
+        # IO.puts(inspect(program))
+        # IO.puts(to_string(program))
+        result = hd(Eval.eval(program))
+        IO.puts(result)
       end
-
-      # IO.puts(inspect(program))
-      IO.puts(to_string(program))
 
       start()
     else
