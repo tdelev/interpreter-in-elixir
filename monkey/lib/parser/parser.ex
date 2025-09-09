@@ -67,7 +67,7 @@ defmodule Parser do
            true}
 
         _ ->
-          {parse_expression_statement([token | rest], errors), false}
+          {parse_expression_statement([token | rest], errors), true}
       end
 
     if more do
@@ -79,6 +79,7 @@ defmodule Parser do
 
   defp after_semicolon([{:semicolon, ";"} | rest]), do: rest
   defp after_semicolon([_token | rest]), do: after_semicolon(rest)
+  defp after_semicolon([]), do: []
 
   defp parse_call_arguments([{:rparen, ")"} | rest], arguments, errors, _left) do
     {arguments, rest, errors}
@@ -134,10 +135,19 @@ defmodule Parser do
   defp parse_expression_statement(tokens, errors) do
     {expression, rest, errors} = parse_expression(@lowest, tokens, errors, nil)
 
-    {%Ast.ExpressionStatement{
-       token: expression.token,
-       expression: expression
-     }, rest, errors}
+    case rest do
+      [{:semicolon, ";"} | after_semicolon] ->
+        {%Ast.ExpressionStatement{
+           token: expression.token,
+           expression: expression
+         }, after_semicolon, errors}
+
+      _ ->
+        {%Ast.ExpressionStatement{
+           token: expression.token,
+           expression: expression
+         }, rest, errors}
+    end
   end
 
   defp parse_infix_expression(precedence, [{token, operator} | rest], errors, left)
@@ -203,7 +213,7 @@ defmodule Parser do
         {:if, "if"} ->
           {condition, rest, errors} = parse_expression(@lowest, rest, errors, left)
           {if_true, rest, errors} = parse_block_statement(tl(rest), errors)
-          [next_token | else_rest] = tl(rest)
+          [next_token | else_rest] = rest
 
           {if_false, rest, errors} =
             if next_token == {:else, "else"} do

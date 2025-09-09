@@ -79,5 +79,20 @@ defmodule EvalTest do
         assert result == %Object.Integer{value: expected, type: :int}
       end
     end
+
+    test "should eval return statements" do
+      inputs = [
+        {"return 10;", 10},
+        {"return 10; 9;", 10},
+        {"9; return 10; 9;", 10},
+        {"9; return 2 * 5; 9;", 10}
+      ]
+
+      for input <- inputs do
+        {input, expected} = input
+        result = run(input)
+        assert result == %Object.Integer{value: expected, type: :int}
+      end
+    end
   end
 end

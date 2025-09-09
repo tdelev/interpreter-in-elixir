@@ -7,11 +7,22 @@ defmodule Eval do
 
   defp eval_statements([stmt | rest], result) do
     res = eval_statement(stmt)
-    eval_statements(rest, [res | result])
+
+    case res do
+      %Object.ReturnValue{value: value} ->
+        [value]
+
+      _ ->
+        eval_statements(rest, [res | result])
+    end
   end
 
   defp eval_statement(%Ast.ExpressionStatement{token: _token, expression: expression}) do
     eval_expression(expression)
+  end
+
+  defp eval_statement(%Ast.ReturnStatement{token: _token, value: value}) do
+    %Object.ReturnValue{value: eval_expression(value)}
   end
 
   defp eval_expression(%Ast.BlockStatement{token: _token, statements: statements}) do

@@ -47,6 +47,7 @@ defmodule ParserTest do
 
     test "should parse return statements" do
       input = "
+        15;
         return 5;
         return 10;
         return add(15);
@@ -58,6 +59,10 @@ defmodule ParserTest do
 
       assert program == %Ast.Program{
                statements: [
+                 %Ast.ExpressionStatement{
+                   token: {:int, "15"},
+                   expression: %Ast.IntegerLiteral{token: {:int, "15"}, value: 15}
+                 },
                  %Ast.ReturnStatement{
                    token: {:return, "return"},
                    value: %Ast.IntegerLiteral{token: {:int, "5"}, value: 5}
@@ -69,9 +74,9 @@ defmodule ParserTest do
                  %Ast.ReturnStatement{
                    token: {:return, "return"},
                    value: %Ast.CallExpression{
+                     token: {:lparen, "("},
                      function: %Ast.Identifier{value: "add", token: {:identifier, "add"}},
-                     arguments: [%Ast.IntegerLiteral{token: {:int, "15"}, value: 15}],
-                     token: {:lparen, "("}
+                     arguments: [%Ast.IntegerLiteral{token: {:int, "15"}, value: 15}]
                    }
                  }
                ]

@@ -28,7 +28,17 @@ defmodule Object.Null do
 end
 
 defimpl String.Chars, for: Object.Null do
-  def to_string(n) do
+  def to_string(_n) do
     "null"
+  end
+end
+
+defmodule Object.ReturnValue do
+  defstruct [:value]
+end
+
+defimpl String.Chars, for: Object.ReturnValue do
+  def to_string(r) do
+    "#{r.value}"
   end
 end
