@@ -42,3 +42,13 @@ defimpl String.Chars, for: Object.ReturnValue do
     "#{r.value}"
   end
 end
+
+defmodule Object.Error do
+  defstruct [:message]
+end
+
+defimpl String.Chars, for: Object.Error do
+  def to_string(e) do
+    "ERROR: #{e.message}"
+  end
+end

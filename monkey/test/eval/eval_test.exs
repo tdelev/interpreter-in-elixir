@@ -94,5 +94,21 @@ defmodule EvalTest do
         assert result == %Object.Integer{value: expected, type: :int}
       end
     end
+
+    test "should handle errors" do
+      inputs = [
+        {"5 + true;", "type mismatch: INTEGER + BOOLEAN"},
+        {"5 + true; 5;", "type mismatch: INTEGER + BOOLEAN"},
+        {"-true", "unknown operator: -BOOLEAN"},
+        {"true + false", "unknown operator: BOOLEAN + BOOLEAN"},
+        {"5; true + false; 5", "unknown operator: BOOLEAN + BOOLEAN"}
+      ]
+
+      for input <- inputs do
+        {input, expected} = input
+        result = run(input)
+        assert result == %Object.Error{message: expected}
+      end
+    end
   end
 end

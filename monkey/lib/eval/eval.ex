@@ -12,6 +12,9 @@ defmodule Eval do
       %Object.ReturnValue{value: value} ->
         [value]
 
+      %Object.Error{message: message} ->
+        [%Object.Error{message: message}]
+
       _ ->
         eval_statements(rest, [res | result])
     end
@@ -36,8 +39,15 @@ defmodule Eval do
   defp eval_expression(%Ast.PrefixExpression{token: _token, operator: operator, right: right}) do
     case operator do
       "-" ->
-        %Object.Integer{value: right_value, type: _type} = eval_expression(right)
-        %Object.Integer{value: -right_value, type: :int}
+        result = eval_expression(right)
+
+        case result do
+          %Object.Integer{value: right_value, type: _type} ->
+            %Object.Integer{value: -right_value, type: :int}
+
+          %Object.Boolean{value: _v, type: _t} ->
+            %Object.Error{message: "unknown operator: -BOOLEAN"}
+        end
 
       "!" ->
         expression = eval_expression(right)
@@ -66,24 +76,59 @@ defmodule Eval do
          operator: operator,
          right: right
        }) do
-    %Object.Integer{value: left_value, type: _type} = eval_expression(left)
-    %Object.Integer{value: right_value, type: _type} = eval_expression(right)
+    left_result = eval_expression(left)
+    right_result = eval_expression(right)
 
-    {result, type} =
-      case operator do
-        "+" -> {left_value + right_value, :int}
-        "-" -> {left_value - right_value, :int}
-        "*" -> {left_value * right_value, :int}
-        "/" -> {left_value / right_value, :int}
-        "<" -> {left_value < right_value, :boolean}
-        "==" -> {left_value == right_value, :boolean}
-        ">" -> {left_value > right_value, :boolean}
-        "!=" -> {left_value != right_value, :boolean}
-      end
+    case left_result do
+      %Object.Integer{value: left_value, type: _type} ->
+        case right_result do
+          %Object.Integer{value: right_value, type: _type} ->
+            {result, type} =
+              case operator do
+                "+" -> {left_value + right_value, :int}
+                "-" -> {left_value - right_value, :int}
+                "*" -> {left_value * right_value, :int}
+                "/" -> {left_value / right_value, :int}
+                "<" -> {left_value < right_value, :boolean}
+                "==" -> {left_value == right_value, :boolean}
+                ">" -> {left_value > right_value, :boolean}
+                "!=" -> {left_value != right_value, :boolean}
+              end
 
-    case type do
-      :int -> %Object.Integer{value: result, type: :int}
-      :boolean -> %Object.Boolean{value: result, type: :boolean}
+            case type do
+              :int -> %Object.Integer{value: result, type: :int}
+              :boolean -> %Object.Boolean{value: result, type: :boolean}
+            end
+
+          %Object.Boolean{value: _v, type: _t} ->
+            %Object.Error{message: "type mismatch: INTEGER #{operator} BOOLEAN"}
+        end
+
+      %Object.Boolean{value: left_value, type: _t} ->
+        case right_result do
+          %Object.Boolean{value: right_value, type: _t} ->
+            case operator do
+              "<" ->
+                %Object.Boolean{value: left_value < right_value, type: :boolean}
+
+              "==" ->
+                %Object.Boolean{value: left_value == right_value, type: :boolean}
+
+              ">" ->
+                %Object.Boolean{value: left_value > right_value, type: :boolean}
+
+              "!=" ->
+                %Object.Boolean{value: left_value != right_value, type: :boolean}
+
+              _ ->
+                %Object.Error{message: "unknown operator: BOOLEAN #{operator} BOOLEAN"}
+            end
+
+          %Object.Integer{value: _v, type: _t} ->
+            %Object.Error{message: "type mismatch: BOOLEAN #{operator} INTEGER"}
+        end
+
+        # %Object.Error{message: "type mismatch: INTEGER #{operator} BOOLEAN"}
     end
   end
 
